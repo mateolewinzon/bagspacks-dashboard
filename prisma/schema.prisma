@@ -1,0 +1,39 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrderStatus {
+  extrusion
+  impresion
+  confeccion
+  terminado
+  entregado
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  orderNumber Int
+  date        String
+  clientName  String
+  description String
+  quantity    Int
+  measures    String
+  weightKg    Float
+  precioVenta Float?
+  estado      OrderStatus @default(extrusion)
+  estadoFecha DateTime?
+  extrusion   Json?
+  impresion   Json?
+  laminacion  Json?
+  confeccion  Json?
+  costoExtra  Json?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
