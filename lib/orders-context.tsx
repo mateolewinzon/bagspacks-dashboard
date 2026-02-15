@@ -1,12 +1,7 @@
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useEffect,
-} from "react";
+import React, { createContext, useContext, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   Order,
   ProcessKey,
@@ -17,6 +12,8 @@ import type {
   CostoExtraData,
 } from "./types";
 import { isProcessDataEmpty } from "./types";
+
+export const ORDERS_QUERY_KEY = ["orders"] as const;
 
 type ProcessDataFor<K extends ProcessKey> = K extends "extrusion"
   ? ExtrusionData
@@ -54,66 +51,77 @@ async function fetchOrders(): Promise<Order[]> {
 }
 
 export function OrdersProvider({ children }: { children: React.ReactNode }) {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { data, isLoading, error, refetch: queryRefetch } = useQuery({
+    queryKey: ORDERS_QUERY_KEY,
+    queryFn: fetchOrders,
+  });
+
+  const orders = data ?? [];
+  const loading = isLoading;
+  const errorMessage =
+    error != null
+      ? error instanceof Error
+        ? error.message
+        : "Error al cargar pedidos"
+      : null;
 
   const refetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const list = await fetchOrders();
-      setOrders(list);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error al cargar pedidos");
-      setOrders([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    await queryRefetch();
+  }, [queryRefetch]);
 
-  useEffect(() => {
-    refetch();
-  }, [refetch]);
+  const addOrder = useCallback(
+    async (order: Omit<Order, "id">) => {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(order),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Error al crear pedido");
+      }
+      const created: Order = await res.json();
+      queryClient.setQueryData<Order[]>(ORDERS_QUERY_KEY, (old) => [
+        ...(old ?? []),
+        created,
+      ]);
+    },
+    [queryClient]
+  );
 
-  const addOrder = useCallback(async (order: Omit<Order, "id">) => {
-    const res = await fetch("/api/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(order),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error ?? "Error al crear pedido");
-    }
-    const created: Order = await res.json();
-    setOrders((prev) => [...prev, created]);
-  }, []);
+  const updateOrder = useCallback(
+    async (id: string, data: Partial<Order>) => {
+      const res = await fetch(`/api/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Error al actualizar pedido");
+      }
+      const updated: Order = await res.json();
+      queryClient.setQueryData<Order[]>(ORDERS_QUERY_KEY, (old) =>
+        (old ?? []).map((o) => (o.id === id ? updated : o))
+      );
+    },
+    [queryClient]
+  );
 
-  const updateOrder = useCallback(async (id: string, data: Partial<Order>) => {
-    const res = await fetch(`/api/orders/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error ?? "Error al actualizar pedido");
-    }
-    const updated: Order = await res.json();
-    setOrders((prev) =>
-      prev.map((o) => (o.id === id ? updated : o))
-    );
-  }, []);
-
-  const deleteOrder = useCallback(async (id: string) => {
-    const res = await fetch(`/api/orders/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error ?? "Error al eliminar pedido");
-    }
-    setOrders((prev) => prev.filter((o) => o.id !== id));
-  }, []);
+  const deleteOrder = useCallback(
+    async (id: string) => {
+      const res = await fetch(`/api/orders/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Error al eliminar pedido");
+      }
+      queryClient.setQueryData<Order[]>(ORDERS_QUERY_KEY, (old) =>
+        (old ?? []).filter((o) => o.id !== id)
+      );
+    },
+    [queryClient]
+  );
 
   const updateOrderProcess = useCallback(
     async <K extends ProcessKey>(
@@ -136,11 +144,11 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
         throw new Error(err.error ?? "Error al actualizar proceso");
       }
       const updated: Order = await res.json();
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? updated : o))
+      queryClient.setQueryData<Order[]>(ORDERS_QUERY_KEY, (old) =>
+        (old ?? []).map((o) => (o.id === orderId ? updated : o))
       );
     },
-    []
+    [queryClient]
   );
 
   return (
@@ -148,7 +156,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       value={{
         orders,
         loading,
-        error,
+        error: errorMessage,
         addOrder,
         updateOrder,
         deleteOrder,

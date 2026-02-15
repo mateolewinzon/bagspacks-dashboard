@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { OrdersProvider } from "@/lib/orders-context";
+import Providers from "@/components/Providers";
 import AppNav from "@/components/AppNav";
 
 const geistSans = Geist({
@@ -29,14 +29,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <OrdersProvider>
+        <Providers>
           <div className="min-h-screen bg-gray-50">
             <AppNav />
             <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
               {children}
             </main>
           </div>
-        </OrdersProvider>
+        </Providers>
       </body>
     </html>
   );

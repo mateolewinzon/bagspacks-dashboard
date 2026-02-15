@@ -17,6 +17,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.4.0",
     "@prisma/client": "^7.4.0",
+    "@tanstack/react-query": "^5.90.21",
     "next": "16.1.6",
     "pg": "^8.18.0",
     "prisma": "^7.4.0",
