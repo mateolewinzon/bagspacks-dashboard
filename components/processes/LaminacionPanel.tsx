@@ -13,9 +13,15 @@ export default function LaminacionPanel({ order }: Props) {
   const { updateOrderProcess } = useOrders();
   const initial: LaminacionData = order.laminacion ?? createEmptyLaminacion();
   const [form, setForm] = useState<LaminacionData>(initial);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    updateOrderProcess(order.id, "laminacion", form);
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateOrderProcess(order.id, "laminacion", form);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -50,9 +56,37 @@ export default function LaminacionPanel({ order }: Props) {
       <div className="flex justify-end">
         <button
           onClick={handleSave}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
+          disabled={saving}
+          className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          Guardar Laminación
+          {saving ? (
+            <>
+              <svg
+                className="h-4 w-4 animate-spin"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              Guardando…
+            </>
+          ) : (
+            "Guardar Laminación"
+          )}
         </button>
       </div>
     </div>
