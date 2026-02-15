@@ -149,6 +149,22 @@ export function isProcessComplete(order: Order, key: ProcessKey): boolean {
   }
 }
 
+/** Returns true only if the process has a cost (used for count badge and green dot). Laminación has no cost field so always false. */
+export function hasProcessCost(order: Order, key: ProcessKey): boolean {
+  switch (key) {
+    case "extrusion":
+      return order.extrusion?.costo != null;
+    case "impresion":
+      return order.impresion?.costoImpresion != null;
+    case "confeccion":
+      return order.confeccion?.costoConfeccion != null;
+    case "costoExtra":
+      return order.costoExtra?.costoExtra != null;
+    case "laminacion":
+      return false;
+  }
+}
+
 /** Returns the responsible person name for the current order status, if applicable */
 export function getResponsableForEstado(order: Order): string | null {
   switch (order.estado) {

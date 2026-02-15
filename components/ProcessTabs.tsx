@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Order, ProcessKey } from "@/lib/types";
-import { PROCESS_LABELS, isProcessComplete } from "@/lib/types";
+import { PROCESS_LABELS, hasProcessCost } from "@/lib/types";
 import ExtrusionPanel from "./processes/ExtrusionPanel";
 import ImpresionPanel from "./processes/ImpresionPanel";
 import LaminacionPanel from "./processes/LaminacionPanel";
@@ -39,7 +39,7 @@ export default function ProcessTabs({ order }: ProcessTabsProps) {
       <div className="flex gap-1 border-b border-gray-200">
         {PROCESS_KEYS.map((key) => {
           const isActive = activeTab === key;
-          const hasData = isProcessComplete(order, key);
+          const hasData = hasProcessCost(order, key);
           return (
             <button
               key={key}

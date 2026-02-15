@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Order, ProcessKey } from "@/lib/types";
-import { getCostoTotal } from "@/lib/types";
+import { getCostoTotal, hasProcessCost } from "@/lib/types";
 import { useOrders } from "@/lib/orders-context";
 import ProcessTabs from "./ProcessTabs";
 import OrderBasicForm from "./OrderBasicForm";
@@ -19,8 +19,8 @@ const PROCESS_KEYS: ProcessKey[] = [
   "costoExtra",
 ];
 
-function getActiveProcesses(order: Order): ProcessKey[] {
-  return PROCESS_KEYS.filter((key) => order[key] !== undefined);
+function getProcessesWithCost(order: Order): ProcessKey[] {
+  return PROCESS_KEYS.filter((key) => hasProcessCost(order, key));
 }
 
 export default function OrderRow({ order }: OrderRowProps) {
@@ -28,7 +28,7 @@ export default function OrderRow({ order }: OrderRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
 
-  const activeProcesses = getActiveProcesses(order);
+  const processesWithCost = getProcessesWithCost(order);
   const costoTotal = getCostoTotal(order);
 
   return (
@@ -75,7 +75,7 @@ export default function OrderRow({ order }: OrderRowProps) {
         </td>
         <td className="whitespace-nowrap px-3 py-3 text-center">
           {(() => {
-            const count = activeProcesses.length;
+            const count = processesWithCost.length;
             const total = PROCESS_KEYS.length;
             const bg =
               count === 0
