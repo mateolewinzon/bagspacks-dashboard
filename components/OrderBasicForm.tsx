@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { Order, OrderStatus } from "@/lib/types";
 import {
   createEmptyExtrusion,
@@ -8,6 +8,11 @@ import {
   createEmptyLaminacion,
   createEmptyConfeccion,
 } from "@/lib/types";
+import {
+  parseMeasures,
+  formatMeasures,
+  computeWeightKg,
+} from "@/lib/measures";
 
 interface FormState {
   orderNumber: number;
@@ -15,8 +20,11 @@ interface FormState {
   clientName: string;
   description: string;
   quantity: number;
-  measures: string;
-  weightKg: number;
+  ancho: number | null;
+  largo: number | null;
+  espesor: number | null;
+  measuresLegacy: string;
+  weightKgManual: number;
   precioVenta: number | null;
   estado: OrderStatus;
   // process responsibles
@@ -39,14 +47,21 @@ export default function OrderBasicForm({
   onCancel,
   error: submitError,
 }: OrderBasicFormProps) {
+  const parsed = initialData?.measures
+    ? parseMeasures(initialData.measures)
+    : null;
+
   const [form, setForm] = useState<FormState>({
     orderNumber: initialData?.orderNumber ?? 0,
     date: initialData?.date ?? new Date().toISOString().split("T")[0],
     clientName: initialData?.clientName ?? "",
     description: initialData?.description ?? "",
     quantity: initialData?.quantity ?? 0,
-    measures: initialData?.measures ?? "",
-    weightKg: initialData?.weightKg ?? 0,
+    ancho: parsed?.ancho ?? null,
+    largo: parsed?.largo ?? null,
+    espesor: parsed?.espesor ?? null,
+    measuresLegacy: parsed ? "" : (initialData?.measures ?? ""),
+    weightKgManual: initialData?.weightKg ?? 0,
     precioVenta: initialData?.precioVenta ?? null,
     estado: initialData?.estado ?? "extrusion",
     extrusor: initialData?.extrusion?.extrusor ?? "",
@@ -54,6 +69,26 @@ export default function OrderBasicForm({
     responsableLaminacion: initialData?.laminacion?.responsable ?? "",
     confeccionResponsable: initialData?.confeccion?.confeccion ?? "",
   });
+
+  const hasMeasures =
+    form.ancho != null &&
+    form.ancho > 0 &&
+    form.largo != null &&
+    form.largo > 0 &&
+    form.espesor != null &&
+    form.espesor > 0;
+
+  const calculatedKg = useMemo(() => {
+    if (!hasMeasures || !form.quantity) return null;
+    return computeWeightKg(form.ancho!, form.largo!, form.espesor!, form.quantity);
+  }, [hasMeasures, form.ancho, form.largo, form.espesor, form.quantity]);
+
+  const nullableNumberFields = new Set([
+    "precioVenta",
+    "ancho",
+    "largo",
+    "espesor",
+  ]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -64,7 +99,7 @@ export default function OrderBasicForm({
       [name]:
         type === "number"
           ? value === ""
-            ? name === "precioVenta"
+            ? nullableNumberFields.has(name)
               ? null
               : 0
             : Number(value)
@@ -75,14 +110,21 @@ export default function OrderBasicForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const measures =
+      hasMeasures
+        ? formatMeasures(form.ancho!, form.largo!, form.espesor!)
+        : form.measuresLegacy;
+
+    const weightKg = calculatedKg ?? form.weightKgManual;
+
     const orderData: Omit<Order, "id"> = {
       orderNumber: form.orderNumber,
       date: form.date,
       clientName: form.clientName,
       description: form.description,
       quantity: form.quantity,
-      measures: form.measures,
-      weightKg: form.weightKg,
+      measures,
+      weightKg,
       precioVenta: form.precioVenta,
       estado: form.estado,
     };
@@ -224,17 +266,55 @@ export default function OrderBasicForm({
         </div>
         <div>
           <label
-            htmlFor="measures"
+            htmlFor="ancho"
             className="mb-1 block text-sm font-medium text-gray-700"
           >
-            Medidas
+            Ancho (cm)
           </label>
           <input
-            type="text"
-            id="measures"
-            name="measures"
-            value={form.measures}
+            type="number"
+            id="ancho"
+            name="ancho"
+            value={form.ancho ?? ""}
             onChange={handleChange}
+            step="0.1"
+            placeholder="cm"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="largo"
+            className="mb-1 block text-sm font-medium text-gray-700"
+          >
+            Largo (cm)
+          </label>
+          <input
+            type="number"
+            id="largo"
+            name="largo"
+            value={form.largo ?? ""}
+            onChange={handleChange}
+            step="0.1"
+            placeholder="cm"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="espesor"
+            className="mb-1 block text-sm font-medium text-gray-700"
+          >
+            Espesor (micrones)
+          </label>
+          <input
+            type="number"
+            id="espesor"
+            name="espesor"
+            value={form.espesor ?? ""}
+            onChange={handleChange}
+            step="1"
+            placeholder="µm"
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
@@ -245,15 +325,28 @@ export default function OrderBasicForm({
           >
             Peso (kg)
           </label>
-          <input
-            type="number"
-            id="weightKg"
-            name="weightKg"
-            value={form.weightKg || ""}
-            onChange={handleChange}
-            step="0.1"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+          {calculatedKg != null ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                id="weightKg"
+                value={calculatedKg}
+                readOnly
+                className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 shadow-sm"
+              />
+              <span className="whitespace-nowrap text-xs text-gray-400">auto</span>
+            </div>
+          ) : (
+            <input
+              type="number"
+              id="weightKg"
+              name="weightKgManual"
+              value={form.weightKgManual || ""}
+              onChange={handleChange}
+              step="0.1"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          )}
         </div>
         <div>
           <label

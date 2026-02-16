@@ -107,6 +107,9 @@ export default function SeguimientoList() {
                 <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600">
                   Precio Venta
                 </th>
+                <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600">
+                  Precio/Kg
+                </th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
                   Estado
                 </th>
@@ -165,7 +168,7 @@ function SeguimientoRow({
   if (isEditing) {
     return (
       <tr>
-        <td colSpan={10} className="bg-gray-50 px-6 py-4">
+        <td colSpan={11} className="bg-gray-50 px-6 py-4">
           <OrderBasicForm
             initialData={order}
             onSubmit={(data) => onSave(data)}
@@ -207,6 +210,16 @@ function SeguimientoRow({
             minimumFractionDigits: 0,
             maximumFractionDigits: 2,
           })}`
+        ) : (
+          <span className="text-gray-400">—</span>
+        )}
+      </td>
+      <td className="whitespace-nowrap px-3 py-3 text-right text-sm text-gray-900">
+        {order.precioVenta != null && order.weightKg > 0 ? (
+          `$${(order.precioVenta / order.weightKg).toLocaleString("es-AR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}/kg`
         ) : (
           <span className="text-gray-400">—</span>
         )}
